@@ -152,37 +152,10 @@
       color: rgba(255, 255, 255, 0.8);
       border-bottom-color: rgba(255, 255, 255, 0.4);
     }
-    .help-toggle {
-      background: none;
-      border: none;
-      color: rgba(255, 255, 255, 0.5);
-      font-size: 0.8rem;
-      cursor: pointer;
-      padding: 0.25rem 0;
-      margin-top: 0.5rem;
-      text-decoration: underline;
-      font-family: inherit;
-    }
-    .help-toggle:hover { color: rgba(255, 255, 255, 0.75); }
-    .help-content {
-      max-width: 480px;
-      margin: 0.5rem auto 0;
-      padding: 0.75rem 1rem;
-      background: rgba(255, 255, 255, 0.06);
-      border-radius: 10px;
-      font-size: 0.8rem;
-      color: rgba(255, 255, 255, 0.7);
-      line-height: 1.5;
-      text-align: left;
-      display: none;
-    }
-    .help-content.visible { display: block; }
-    .help-content p { margin: 0 0 0.5rem 0; }
-    .help-content p:last-child { margin-bottom: 0; }
   </style>
 </head>
 <body>
-  <h1>Kolam</h1>
+  <h1>Kolam (project in progress)</h1>
   <div class="instructions">
     <p><strong>N-line method (Kambi Kolam)</strong></p>
     <p><strong>1. Draw N-lines.</strong> Connect neighboring dots (up, down, left, or right) by dragging from dot to dot. All dots should be connected by these lines, with no closed loops. A × marks the <strong>crossing</strong> (midpoint) of each N-line. Symmetry repeats your connections.</p>
@@ -552,6 +525,7 @@
       window.addEventListener('resize', () => { boardRect = null; });
 
       rebuildBoard('7,5,7,5,7');
+
     })();
   </script>
 </body>
