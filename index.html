@@ -32,16 +32,25 @@
     .instructions {
       color: rgba(255, 255, 255, 0.5);
       font-size: 0.8125rem;
-      margin-bottom: 1.5rem;
+      margin-bottom: 1rem;
       text-align: center;
-      max-width: 320px;
-      line-height: 1.45;
+      max-width: 480px;
+      line-height: 1.5;
     }
+    .instructions p {
+      margin: 0 0 0.5rem 0;
+    }
+    .instructions p:first-of-type { margin-top: 0; }
+    .instructions ul {
+      margin: 0.5rem 0 0 0;
+      padding-left: 1.25rem;
+      text-align: left;
+    }
+    .instructions li { margin-bottom: 0.25rem; }
     .board-wrap {
       background: #0d0d0d;
       border-radius: 20px;
-      padding: 28px;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+      padding: 24px;
     }
     #board {
       display: block;
@@ -71,6 +80,16 @@
       width: 88px;
       height: 6px;
       accent-color: #fff;
+      cursor: pointer;
+    }
+    select {
+      padding: 0.4rem 0.6rem;
+      border: 1px solid #2a2a2a;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 0.875rem;
+      color: #fff;
+      background: #141414;
       cursor: pointer;
     }
     input[type="number"],
@@ -133,15 +152,56 @@
       color: rgba(255, 255, 255, 0.8);
       border-bottom-color: rgba(255, 255, 255, 0.4);
     }
+    .help-toggle {
+      background: none;
+      border: none;
+      color: rgba(255, 255, 255, 0.5);
+      font-size: 0.8rem;
+      cursor: pointer;
+      padding: 0.25rem 0;
+      margin-top: 0.5rem;
+      text-decoration: underline;
+      font-family: inherit;
+    }
+    .help-toggle:hover { color: rgba(255, 255, 255, 0.75); }
+    .help-content {
+      max-width: 480px;
+      margin: 0.5rem auto 0;
+      padding: 0.75rem 1rem;
+      background: rgba(255, 255, 255, 0.06);
+      border-radius: 10px;
+      font-size: 0.8rem;
+      color: rgba(255, 255, 255, 0.7);
+      line-height: 1.5;
+      text-align: left;
+      display: none;
+    }
+    .help-content.visible { display: block; }
+    .help-content p { margin: 0 0 0.5rem 0; }
+    .help-content p:last-child { margin-bottom: 0; }
   </style>
 </head>
 <body>
   <h1>Kolam</h1>
-  <p class="instructions">Connect the dots; then freehand in white to connect the ×’s.</p>
+  <div class="instructions">
+    <p><strong>N-line method (Kambi Kolam)</strong></p>
+    <p><strong>1. Draw N-lines.</strong> Connect neighboring dots (up, down, left, or right) by dragging from dot to dot. All dots should be connected by these lines, with no closed loops. A × marks the <strong>crossing</strong> (midpoint) of each N-line. Symmetry repeats your connections.</p>
+    <p><strong>2. Trace the path.</strong> With the white freehand, draw one continuous line that visits every × exactly once and returns to the start. <strong>At each ×:</strong> go straight through the crossing, then turn around the dot next to it. <strong>Alternate</strong> turning direction (clockwise then anti-clockwise) at each crossing so the path forms a single closed loop through all crossings.</p>
+    <p>Tip: start at a × on the edge or corner. Lower “Lines & × opacity” to see your tracing clearly.</p>
+  </div>
   <div class="board-wrap">
-    <svg id="board" width="320" height="320" viewBox="0 0 320 320"></svg>
+    <svg id="board" width="480" height="480" viewBox="0 0 480 480"></svg>
   </div>
   <div class="controls">
+    <div class="control-row">
+      <label for="symmetry">Symmetry</label>
+      <select id="symmetry">
+        <option value="rotational">Rotational (4-fold)</option>
+        <option value="x">X-axis</option>
+        <option value="y">Y-axis</option>
+        <option value="none">None</option>
+      </select>
+    </div>
     <div class="control-row">
       <label for="opacity">Lines & × opacity</label>
       <input type="range" id="opacity" min="0" max="100" value="35" />
@@ -153,13 +213,13 @@
     <button type="button" id="undo">Undo</button>
     <button type="button" id="clear">Clear</button>
   </div>
-  <p class="credit">Drawing method inspired by <a href="https://alpaca.pubpub.org/pub/xywz3ebv/release/1" target="_blank" rel="noopener">Anuradha Reddy</a>’s work.</p>
+  <p class="credit">Drawing method by <a href="https://anuradhareddy.com/Projects" target="_blank" rel="noopener">Anuradha Reddy</a> — <a href="https://alpaca.pubpub.org/pub/xywz3ebv/release/1" target="_blank" rel="noopener">N-line method (Kambi Kolam as Algorithmic Pattern)</a>.</p>
 
   <script>
     (function () {
       const DOT_RADIUS = 3;
       const PADDING = 40;
-      const BOARD_SIZE = 320;
+      const BOARD_SIZE = 480;
       const NS = 'http://www.w3.org/2000/svg';
       const SEGMENT_STROKE = '#c49568';
       const HIT_R2 = (DOT_RADIUS * 2) ** 2;
@@ -184,6 +244,14 @@
       let previewGroup = null;
       let freehandPoints = [];
       let freehandPath = null;
+      let symmetry = 'rotational';
+
+      function reflectXPoint(px, py) {
+        return { x: px, y: 2 * center.y - py };
+      }
+      function reflectYPoint(px, py) {
+        return { x: 2 * center.x - px, y: py };
+      }
 
       function getDot(x, y) {
         for (let i = 0; i < dots.length; i++) {
@@ -245,9 +313,25 @@
         return getDotIndexAt(p.x, p.y);
       }
 
+      function reflectXDotIndex(i) {
+        const p = reflectXPoint(dots[i].x, dots[i].y);
+        return getDotIndexAt(p.x, p.y);
+      }
+      function reflectYDotIndex(i) {
+        const p = reflectYPoint(dots[i].x, dots[i].y);
+        return getDotIndexAt(p.x, p.y);
+      }
+
+      function getSymmetrySegments(i, j) {
+        if (symmetry === 'none') return [[i, j]];
+        if (symmetry === 'x') return [[i, j], [reflectXDotIndex(i), reflectXDotIndex(j)]];
+        if (symmetry === 'y') return [[i, j], [reflectYDotIndex(i), reflectYDotIndex(j)]];
+        return [[i, j], [rotatedDotIndex(i, 1), rotatedDotIndex(j, 1)], [rotatedDotIndex(i, 2), rotatedDotIndex(j, 2)], [rotatedDotIndex(i, 3), rotatedDotIndex(j, 3)]];
+      }
+
       function addLine(i, j) {
-        if (i === j) return;
-        const segs = [[i, j], [rotatedDotIndex(i, 1), rotatedDotIndex(j, 1)], [rotatedDotIndex(i, 2), rotatedDotIndex(j, 2)], [rotatedDotIndex(i, 3), rotatedDotIndex(j, 3)]];
+        if (i === j || !isCardinalNeighbor(i, j)) return;
+        const segs = getSymmetrySegments(i, j);
         const added = [];
         for (const [a, b] of segs) {
           if (a < 0 || b < 0 || a === b) continue;
@@ -290,9 +374,19 @@
             circle.setAttribute('stroke', '#aaa');
             circle.setAttribute('stroke-width', '1');
             dotsGroup.appendChild(circle);
-            dots.push({ x, y });
+            dots.push({ x, y, row, col });
           }
         }
+      }
+
+      function isCardinalNeighbor(i, j) {
+        if (i < 0 || j < 0 || i >= dots.length || j >= dots.length) return false;
+        const a = dots[i], b = dots[j];
+        const dx = Math.abs(a.x - b.x), dy = Math.abs(a.y - b.y);
+        const eps = SPACING * 0.1;
+        const vertical = dx < eps && Math.abs(dy - SPACING) < eps;
+        const horizontal = dy < eps && Math.abs(dx - SPACING) < eps;
+        return vertical || horizontal;
       }
 
       function parseRowPattern(str) {
@@ -375,10 +469,10 @@
         }
         if (dragStart === null) return;
         const j = getDot(x, y);
-        if (j >= 0 && j !== dragStart) {
+        if (j >= 0 && j !== dragStart && isCardinalNeighbor(dragStart, j)) {
           previewGroup?.remove();
           previewGroup = document.createElementNS(NS, 'g');
-          [[dragStart, j], [rotatedDotIndex(dragStart, 1), rotatedDotIndex(j, 1)], [rotatedDotIndex(dragStart, 2), rotatedDotIndex(j, 2)], [rotatedDotIndex(dragStart, 3), rotatedDotIndex(j, 3)]].forEach(([a, b]) => {
+          getSymmetrySegments(dragStart, j).forEach(([a, b]) => {
             if (a >= 0 && b >= 0 && a !== b) previewGroup.appendChild(createLine(dots[a].x, dots[a].y, dots[b].x, dots[b].y, 0.6));
           });
           linesGroup.appendChild(previewGroup);
@@ -401,7 +495,7 @@
         const j = getDot(x, y);
         previewGroup?.remove();
         previewGroup = null;
-        if (j >= 0 && j !== dragStart) addLine(dragStart, j);
+        if (j >= 0 && j !== dragStart && isCardinalNeighbor(dragStart, j)) addLine(dragStart, j);
         dragStart = null;
       }
 
@@ -451,6 +545,9 @@
         this.value = parsed.join(',');
         rebuildBoard(this.value);
       });
+
+      const symmetryEl = document.getElementById('symmetry');
+      symmetryEl.addEventListener('change', () => { symmetry = symmetryEl.value; });
 
       window.addEventListener('resize', () => { boardRect = null; });
 
