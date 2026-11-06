@@ -27,6 +27,7 @@
       justify-content: center;
       align-items: center;
       overflow: hidden;
+      background: #000;
     }
     .hero-video {
       position: absolute;
@@ -35,7 +36,9 @@
       height: 100%;
       object-fit: cover;
       z-index: 0;
+      transition: opacity 0.8s ease;
     }
+    .hero-video.is-ended { opacity: 0; }
     .hero-overlay {
       position: absolute;
       inset: 0;
@@ -121,9 +124,41 @@
     .mute-btn:hover { background: rgba(255,255,255,0.18); border-color: rgba(255,255,255,0.4); }
     .mute-btn svg { width: 1.1rem; height: 1.1rem; fill: #fff; }
 
+    /* ── Video scrubber ─────────────────────────── */
+    .scrubber {
+      position: absolute;
+      bottom: 1.9rem;
+      left: 3rem;
+      right: 6rem;
+      z-index: 3;
+      -webkit-appearance: none;
+      appearance: none;
+      height: 4px;
+      border-radius: 2px;
+      cursor: pointer;
+      outline: none;
+      background: linear-gradient(to right, #fff var(--progress, 0%), rgba(255,255,255,0.25) var(--progress, 0%));
+    }
+    .scrubber::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 12px; height: 12px;
+      border-radius: 50%;
+      background: #fff;
+      border: none;
+    }
+    .scrubber::-moz-range-thumb {
+      width: 12px; height: 12px;
+      border-radius: 50%;
+      background: #fff;
+      border: none;
+    }
+    .scrubber:focus-visible { outline: 2px solid rgba(255,255,255,0.6); outline-offset: 6px; }
+
     /* ── Responsive ─────────────────────────────── */
     @media (max-width: 760px) {
       .hero-content { bottom: 1.5rem; left: 1.5rem; }
+      .hero-content { bottom: 3.5rem; }
+      .scrubber { left: 1.5rem; right: 5rem; bottom: 2rem; }
     }
   </style>
 </head>
@@ -145,6 +180,7 @@
         <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
       </svg>
     </button>
+    <input type="range" class="scrubber" id="scrubber" min="0" max="1000" value="0" step="1" aria-label="Scrub video" />
     <div class="hero-content">
       <h1>கோலம்</h1>
       <p>kolam</p>
@@ -172,7 +208,37 @@
 
       // Chrome pauses off-screen videos — force resume unless user explicitly paused
       let userPaused = false;
-      video.addEventListener('pause', () => { if (!userPaused) video.play().catch(() => {}); });
+      video.addEventListener('pause', () => { if (!userPaused && !video.ended) video.play().catch(() => {}); });
+
+      // Black out at the end; no looping
+      video.loop = false;
+      video.addEventListener('ended', () => {
+        video.classList.add('is-ended');
+        scrubber.value = scrubber.max;
+        paintProgress();
+      });
+
+      // Scrubber
+      const scrubber = document.getElementById('scrubber');
+      let scrubbing = false;
+      function paintProgress() {
+        scrubber.style.setProperty('--progress', (scrubber.value / scrubber.max * 100) + '%');
+      }
+      video.addEventListener('timeupdate', () => {
+        if (scrubbing || !video.duration) return;
+        scrubber.value = video.currentTime / video.duration * scrubber.max;
+        paintProgress();
+      });
+      scrubber.addEventListener('pointerdown', () => { scrubbing = true; });
+      window.addEventListener('pointerup', () => { scrubbing = false; });
+      scrubber.addEventListener('input', () => {
+        if (video.duration) video.currentTime = scrubber.value / scrubber.max * video.duration;
+        if (!video.ended) {
+          video.classList.remove('is-ended');
+          if (video.paused) video.play().catch(() => {});
+        }
+        paintProgress();
+      });
     })();
   </script>
 </body>
