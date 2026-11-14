@@ -352,7 +352,7 @@
         playButton.setAttribute('aria-label', video.paused ? 'Play video' : 'Pause video');
       }
       const autoplayOnArrival = new IntersectionObserver(([entry]) => {
-        if (entry.intersectionRatio < 0.25) return;
+        if (entry.intersectionRatio < 0.5) return;
         autoplayOnArrival.disconnect();
         video.play().catch((error) => {
           if (error.name !== 'NotAllowedError') return;
@@ -361,7 +361,7 @@
             soundPrompt.hidden = !video.muted || video.paused;
           }).catch(() => {});
         });
-      }, { threshold: 0.25 });
+      }, { threshold: 0.5 });
       autoplayOnArrival.observe(stage);
 
       playButton.addEventListener('click', () => {
